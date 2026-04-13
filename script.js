@@ -1751,9 +1751,41 @@ function cerrarCrucesModal(e) {
 //  ESCANEO QR PARA BD
 // ═══════════════════════════════════════════
 
-var qrScanner = null;
+var qrVideo = null;
+var qrCanvas = null;
+var qrCanvasContext = null;
+var qrStream = null;
+var qrScanning = false;
 
 function scanQrCode() {
+  // Check if jsQR library is loaded
+  if (typeof jsQR === 'undefined') {
+    // Show loading message
+    var loadingBtn = document.querySelector('button[onclick="scanQrCode()"]');
+    if (loadingBtn) {
+      loadingBtn.disabled = true;
+      loadingBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span> Cargando...';
+    }
+
+    setTimeout(function() {
+      if (typeof jsQR === 'undefined') {
+        alert('La librería de escaneo QR no se pudo cargar. Verifica tu conexión a internet e inténtalo de nuevo.');
+        if (loadingBtn) {
+          loadingBtn.disabled = false;
+          loadingBtn.innerHTML = '<span class="material-icons-round">qr_code_scanner</span> Escanear QR';
+        }
+        return;
+      }
+      // Restore button and continue
+      if (loadingBtn) {
+        loadingBtn.disabled = false;
+        loadingBtn.innerHTML = '<span class="material-icons-round">qr_code_scanner</span> Escanear QR';
+      }
+      scanQrCode();
+    }, 2000);
+    return;
+  }
+
   // Create QR scanner modal
   var modal = document.createElement('div');
   modal.id = 'qr-modal';
@@ -1771,7 +1803,8 @@ function scanQrCode() {
         </button>
       </div>
       <div style="padding:20px;text-align:center;">
-        <video id="qr-video" style="width:100%;max-width:300px;border-radius:12px;"></video>
+        <video id="qr-video" style="width:100%;max-width:300px;border-radius:12px;" autoplay playsinline></video>
+        <canvas id="qr-canvas" style="display:none;"></canvas>
         <p style="margin-top:16px;color:var(--text-muted);font-size:14px;">
           Apunta la cámara al código QR que contiene la configuración de la BD
         </p>
@@ -1780,21 +1813,23 @@ function scanQrCode() {
   `;
   document.body.appendChild(modal);
 
-  // Initialize QR scanner
-  qrScanner = new QrScanner(
-    document.getElementById('qr-video'),
-    function(result) {
-      handleQrResult(result.data);
-    },
-    {
-      highlightScanRegion: true,
-      highlightCodeOutline: true,
-    }
-  );
+  qrVideo = document.getElementById('qr-video');
+  qrCanvas = document.getElementById('qr-canvas');
+  qrCanvasContext = qrCanvas.getContext('2d');
 
-  // Start scanning
-  qrScanner.start().catch(function(err) {
-    console.error('Error starting QR scanner:', err);
+  // Start camera
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' }
+  })
+  .then(function(stream) {
+    qrStream = stream;
+    qrVideo.srcObject = stream;
+    qrVideo.play();
+    qrScanning = true;
+    scanFrame();
+  })
+  .catch(function(err) {
+    console.error('Error accessing camera:', err);
     alert('Error al acceder a la cámara: ' + err.message);
     closeQrScanner();
   });
@@ -1812,6 +1847,26 @@ function scanQrCode() {
 
   // Store the handler to remove it later
   modal._escapeHandler = handleQrEscape;
+}
+
+function scanFrame() {
+  if (!qrScanning) return;
+
+  if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+    qrCanvas.height = qrVideo.videoHeight;
+    qrCanvas.width = qrVideo.videoWidth;
+    qrCanvasContext.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
+
+    var imageData = qrCanvasContext.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+    var code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      handleQrResult(code.data);
+      return;
+    }
+  }
+
+  requestAnimationFrame(scanFrame);
 }
 
 function handleQrResult(qrData) {
@@ -1832,15 +1887,27 @@ function handleQrResult(qrData) {
 }
 
 function closeQrScanner() {
-  if (qrScanner) {
-    qrScanner.stop();
-    qrScanner = null;
+  qrScanning = false;
+
+  if (qrStream) {
+    qrStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
+    qrStream = null;
   }
+
   var modal = document.getElementById('qr-modal');
   if (modal) {
     if (modal._escapeHandler) {
       document.removeEventListener('keydown', modal._escapeHandler);
     }
     modal.remove();
+  }
+
+  // Restore button state
+  var loadingBtn = document.querySelector('button[onclick="scanQrCode()"]');
+  if (loadingBtn) {
+    loadingBtn.disabled = false;
+    loadingBtn.innerHTML = '<span class="material-icons-round">qr_code_scanner</span> Escanear QR';
   }
 }
