@@ -28,6 +28,9 @@
   <!-- ── SCREEN: HOME ── -->
   <div id="screen-home" class="screen active">
 
+    <div class="home-header">
+      <h2 id="title-home">Gestión de consumiciones</h2>
+    </div>
     <div class="section-label">Acciones</div>
 
     <button class="action-btn btn-new" onclick="nuevaConsumicion()">
@@ -86,6 +89,15 @@
       <span class="material-icons-round btn-arrow">chevron_right</span>
     </button>
 
+    <button class="action-btn btn-clis" onclick="showDbManager()">
+      <div class="btn-icon"><span class="material-icons-round">storage</span></div>
+      <div class="btn-text">
+        <span class="btn-title">BD</span>
+        <span class="btn-desc">Gestiona las conexiones Upstash</span>
+      </div>
+      <span class="material-icons-round btn-arrow">chevron_right</span>
+    </button>
+
   </div>
 
   <!-- ── SCREEN: NUEVA CONSUMICIÓN ── -->
@@ -93,7 +105,7 @@
     <div class="inner-screen" id="nueva-inner">
       <div class="screen-header">
         <span class="material-icons-round" style="color:var(--accent-light)">add_circle</span>
-        <h2>Nueva consumición</h2>
+        <h2 id="title-nueva">Nueva consumición</h2>
       </div>
 
       <!-- Check de terraza -->
@@ -170,6 +182,27 @@
     </div>
   </div>
 
+  <div id="db-form-overlay" class="modal-overlay" onclick="cerrarDbForm(event)">
+    <div class="modal-sheet" id="db-form-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">Nueva BD</span>
+        <button class="modal-close" onclick="cerrarDbFormBtn()" title="Cerrar">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <form id="db-form" class="modal-body" onsubmit="return submitDbForm(event)" style="display:flex;flex-direction:column;gap:12px;padding:0 20px 20px;">
+        <input class="terraza-admin-input" type="text" id="db-name-input" placeholder="Nombre de la BD" autocomplete="off" required />
+        <input class="terraza-admin-input" type="url" id="db-url-input" placeholder="URL de Upstash" autocomplete="off" required />
+        <input class="terraza-admin-input" type="text" id="db-token-input" placeholder="Token de Upstash" autocomplete="off" required />
+        <button class="modal-done-btn" type="submit">
+          <span class="material-icons-round">save</span>
+          Guardar BD
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- ── MODAL: PAGO ── -->
   <div id="pago-overlay" class="pago-overlay">
     <div class="pago-dialog">
@@ -200,7 +233,7 @@
     <div class="inner-screen" style="padding:16px 20px 0;overflow:hidden;flex:1;display:flex;flex-direction:column;gap:12px">
       <div class="screen-header">
         <span class="material-icons-round" style="color:#50c8a0">history</span>
-        <h2>Histórico</h2>
+        <h2 id="title-historico">Histórico</h2>
       </div>
       <div id="hist-loading" class="stats-loading">
         <span class="material-icons-round" style="font-size:18px;opacity:.6">sync</span>
@@ -325,7 +358,7 @@
     <div class="inner-screen">
       <div class="screen-header">
         <span class="material-icons-round" style="color:#f5b450">bar_chart</span>
-        <h2>Estadísticas</h2>
+        <h2 id="title-estadisticas">Estadísticas</h2>
       </div>
 
       <div id="stats-loading" class="stats-loading">
@@ -372,7 +405,7 @@
     <div class="inner-screen">
       <div class="screen-header">
         <span class="material-icons-round" style="color:#60b0f5">restaurant_menu</span>
-        <h2>Productos</h2>
+        <h2 id="title-productos">Productos</h2>
       </div>
       <div class="admin-list-card">
         <table class="admin-table prod-edit-table">
@@ -404,7 +437,7 @@
     <div class="inner-screen">
       <div class="screen-header">
         <span class="material-icons-round" style="color:#f580b0">group</span>
-        <h2>Clientes</h2>
+        <h2 id="title-clientes">Clientes</h2>
       </div>
       <div class="admin-list-card">
         <table class="admin-table">
@@ -431,11 +464,29 @@
   </div>
 
   <!-- ── SCREEN: TERRAZA ── -->
+  <div id="screen-dbs" class="screen admin-screen">
+    <div class="inner-screen">
+      <div class="screen-header">
+        <span class="material-icons-round" style="color:#a89ef9">storage</span>
+        <h2>Gestión de BD</h2>
+      </div>
+      <div class="terraza-admin-card" style="padding:22px 20px;gap:16px;">
+        <div class="terraza-admin-label">Bases de datos configuradas</div>
+        <div id="db-list" style="display:flex;flex-direction:column;gap:10px;max-height:48vh;overflow:auto;padding-right:4px;"></div>
+        <button class="terraza-save-btn" onclick="promptAddDb()" style="margin-top:4px;">
+          <span class="material-icons-round">add</span>
+          Nueva BD
+        </button>
+      </div>
+      <div class="admin-footer"></div>
+    </div>
+  </div>
+
   <div id="screen-terraza" class="screen admin-screen">
     <div class="inner-screen">
       <div class="screen-header">
         <span class="material-icons-round" style="color:#60d4b0">deck</span>
-        <h2>Terraza</h2>
+        <h2 id="title-terraza">Terraza</h2>
       </div>
       <div class="terraza-admin-card">
         <div class="terraza-admin-label">Precio por producto en terraza</div>

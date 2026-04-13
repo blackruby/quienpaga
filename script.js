@@ -2,13 +2,182 @@
 //  DATOS GLOBALES
 // ═══════════════════════════════════════════
 
-const UPSTASH_URL   = 'https://immortal-wasp-60886.upstash.io';
-const UPSTASH_TOKEN = 'Ae3WAAIncDFiMWI4ODFhMGNjNmY0YjE1YjA3NzQ0ZTYyZWU0YmZjZXAxNjA4ODY';
+const DB_CONFIGS_KEY  = 'LAISLA_DB_CONFIGS';
+const DB_DEFAULT_KEY  = 'LAISLA_DB_DEFAULT';
 
-// Se rellenan una sola vez al cargar la página
+var DB_CONFIGS = [];
+var DB_DEFAULT_ID = null;
+var currentDb = null;
+
 var CLIENTES  = [];
 var PRODUCTOS = [];
 var PRECIO_TERRAZA = 0;
+
+function loadDbConfigs() {
+  try {
+    DB_CONFIGS = JSON.parse(localStorage.getItem(DB_CONFIGS_KEY) || '[]') || [];
+  } catch (e) {
+    DB_CONFIGS = [];
+  }
+  DB_DEFAULT_ID = localStorage.getItem(DB_DEFAULT_KEY);
+  currentDb = DB_CONFIGS.find(function(db) {
+    return String(db.id) === String(DB_DEFAULT_ID);
+  }) || null;
+}
+
+function saveDbConfigs() {
+  localStorage.setItem(DB_CONFIGS_KEY, JSON.stringify(DB_CONFIGS));
+  if (DB_DEFAULT_ID !== null && DB_DEFAULT_ID !== undefined) {
+    localStorage.setItem(DB_DEFAULT_KEY, String(DB_DEFAULT_ID));
+  } else {
+    localStorage.removeItem(DB_DEFAULT_KEY);
+  }
+}
+
+function getSelectedDb() {
+  return currentDb || DB_CONFIGS.find(function(db) {
+    return String(db.id) === String(DB_DEFAULT_ID);
+  }) || null;
+}
+
+function dbFetch(path, options) {
+  var db = getSelectedDb();
+  if (!db) throw new Error('No hay BD seleccionada. Ve a Gestión de BD.');
+  var url = db.url.replace(/\/+$/, '') + path;
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers.Authorization = 'Bearer ' + db.token;
+  return fetch(url, options);
+}
+
+function selectDb(id) {
+  // Try to load data from the selected DB first
+  var db = DB_CONFIGS.find(function(d) { return String(d.id) === String(id); });
+  if (!db) return;
+
+  // Temporarily set this DB as current to test connection
+  var oldCurrent = currentDb;
+  currentDb = db;
+
+  mostrarEstadoCarga('Verificando conexión…', false);
+
+  // Try to load basic data to verify connection
+  Promise.all([
+    dbFetch('/get/clientes'),
+    dbFetch('/get/productos'),
+    dbFetch('/get/terraza')
+  ])
+  .then(function(results) {
+    // Connection successful, set as default and load data
+    DB_DEFAULT_ID = String(id);
+    currentDb = db;
+    saveDbConfigs();
+    renderDbManager();
+    showScreen('screen-home', 'nav-home', true);
+    cargarDatos();
+  })
+  .catch(function(err) {
+    // Connection failed, revert and show error
+    currentDb = oldCurrent;
+    console.error('Error conectando a BD:', err);
+    alert('Error de conexión con la BD: ' + err.message + '. No se pudo seleccionar.');
+    mostrarEstadoCarga('', false); // Clear loading message
+  });
+}
+
+function addDbConfig(name, url, token) {
+  var trimmedName = name.trim();
+  var trimmedUrl = url.trim();
+  var trimmedToken = token.trim();
+  if (!trimmedName || !trimmedUrl || !trimmedToken) {
+    alert('Nombre, URL y token son obligatorios.');
+    return null;
+  }
+  var id = String(Date.now());
+  DB_CONFIGS.push({ id: id, name: trimmedName, url: trimmedUrl, token: trimmedToken });
+  saveDbConfigs();
+  return id;
+}
+
+function submitDbForm(e) {
+  e.preventDefault();
+  var name = document.getElementById('db-name-input').value;
+  var url = document.getElementById('db-url-input').value;
+  var token = document.getElementById('db-token-input').value;
+  if (!name.trim() || !url.trim() || !token.trim()) {
+    document.getElementById('db-form').reportValidity();
+    return false;
+  }
+  var id = addDbConfig(name, url, token);
+  if (id) {
+    renderDbManager();
+    cerrarDbFormBtn();
+  }
+  return false;
+}
+
+function deleteDbConfig(id) {
+  DB_CONFIGS = DB_CONFIGS.filter(function(db) { return String(db.id) !== String(id); });
+  if (String(DB_DEFAULT_ID) === String(id)) {
+    DB_DEFAULT_ID = null;
+    currentDb = null;
+  }
+  saveDbConfigs();
+  loadDbConfigs();
+  renderDbManager();
+  if (!getSelectedDb()) showDbManager();
+}
+
+function promptAddDb() {
+  openDbFormModal();
+}
+
+function openDbFormModal() {
+  document.getElementById('db-form').reset();
+  document.getElementById('db-form-overlay').classList.add('open');
+  document.getElementById('db-name-input').focus();
+  pushModalState('db-form');
+}
+
+function cerrarDbFormBtn() {
+  document.getElementById('db-form-overlay').classList.remove('open');
+}
+
+function cerrarDbForm(e) {
+  if (e.target === document.getElementById('db-form-overlay')) cerrarDbFormBtn();
+}
+
+function renderDbManager() {
+  var list = document.getElementById('db-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (DB_CONFIGS.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:14px;">No hay BD configuradas.</div>';
+    return;
+  }
+  DB_CONFIGS.forEach(function(db) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1.5px solid rgba(255,255,255,.08);border-radius:16px;background:var(--surface2);gap:12px;';
+    row.innerHTML =
+      '<div style="min-width:0;flex:1;">' +
+        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + db.name + '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-shrink:0;">' +
+        '<button class="fab-btn fab-cancel" style="padding:10px 12px;min-width:auto;font-size:12px;" onclick="selectDb(\'' + db.id + '\')">' +
+          (String(DB_DEFAULT_ID) === String(db.id) ? 'Activa' : 'Seleccionar') +
+        '</button>' +
+        '<button class="fab-btn" style="background:rgba(240,112,112,.15);color:#f07070;padding:10px 12px;min-width:auto;font-size:12px;" onclick="deleteDbConfig(\'' + db.id + '\')">' +
+          'Eliminar' +
+        '</button>' +
+      '</div>';
+    list.appendChild(row);
+  });
+}
+
+function showDbManager() {
+  showScreen('screen-dbs', 'nav-home', true);
+  renderDbManager();
+}
 
 // ═══════════════════════════════════════════
 //  ESTADO
@@ -25,9 +194,7 @@ var terrazaActiva   = false;   // estado del toggle de terraza
 // ═══════════════════════════════════════════
 
 function redisGet(clave) {
-  return fetch(UPSTASH_URL + '/get/' + clave, {
-    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-  })
+  return dbFetch('/get/' + clave)
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status + ' al leer "' + clave + '"');
     return r.json();
@@ -35,9 +202,7 @@ function redisGet(clave) {
   .then(function(data) {
     if (data.result === null || data.result === undefined)
       throw new Error('La clave "' + clave + '" no existe en Redis');
-    // Si el resultado ya es un objeto/array (Upstash lo deserializó), devolverlo directamente
     if (typeof data.result !== 'string') return data.result;
-    // Si es string, parsearlo
     return JSON.parse(data.result);
   });
 }
@@ -53,27 +218,42 @@ function mostrarEstadoCarga(msg, esError) {
 }
 
 // Ejecutar al cargar la página
-(async function cargarDatos() {
-  // Mostrar indicador en la tabla (por si el usuario va rápido a "Nueva")
+async function cargarDatos() {
+  loadDbConfigs();
+  updateScreenHeader('screen-home');
+  if (!DB_CONFIGS.length || !getSelectedDb()) {
+    renderDbManager();
+    showDbManager();
+    return;
+  }
+
   mostrarEstadoCarga('Cargando datos…', false);
 
   try {
     var resultados = await Promise.all([
-      redisGet('clientes'),
-      redisGet('productos'),
-      fetch(UPSTASH_URL + '/get/terraza', {
-        headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        return parseFloat(d.result) || 0;
-      })
+      redisGet('clientes').catch(function() { return []; }),
+      redisGet('productos').catch(function() { return []; }),
+      dbFetch('/get/terraza')
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(d) { return parseFloat(d.result) || 0; })
+        .catch(function() { return 0; })
     ]);
 
     CLIENTES        = resultados[0];
     PRODUCTOS       = resultados[1];
     PRECIO_TERRAZA  = resultados[2];
 
-    if (!Array.isArray(CLIENTES) || CLIENTES.length === 0)
-      throw new Error('El array de clientes está vacío');
+    // Initialize clients with "Invitados" if empty
+    if (!Array.isArray(CLIENTES) || CLIENTES.length === 0) {
+      CLIENTES = [{ id: 0, nombre: 'Invitados' }];
+      // Save initialized clients to DB
+      await dbFetch('/set/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(CLIENTES)
+      });
+    }
+
     if (!Array.isArray(PRODUCTOS) || PRODUCTOS.length === 0)
       throw new Error('El array de productos está vacío');
 
@@ -93,7 +273,9 @@ function mostrarEstadoCarga(msg, esError) {
     console.error('Error cargando datos desde Upstash:', err);
     mostrarEstadoCarga('Error al cargar datos: ' + err.message, true);
   }
-})();
+}
+
+cargarDatos();
 
 // ═══════════════════════════════════════════
 //  NAVEGACIÓN
@@ -108,10 +290,21 @@ function showScreen(screenId, navId, sinHistorial) {
   document.getElementById(screenId).classList.add('active');
   document.getElementById(navId).classList.add('active');
   _screenActual = screenId;
+  updateScreenHeader(screenId);
 
   if (!sinHistorial && screenId !== 'screen-home') {
     history.pushState({ screen: screenId }, '');
   }
+}
+
+function updateScreenHeader(screenId) {
+  var titleEl = document.getElementById('title-' + screenId.replace(/^screen-/, ''));
+  if (!titleEl) return;
+  if (!titleEl.dataset.baseTitle) {
+    titleEl.dataset.baseTitle = titleEl.textContent;
+  }
+  var db = getSelectedDb();
+  titleEl.textContent = titleEl.dataset.baseTitle + (db ? ' · ' + db.name : '');
 }
 
 function goHome() {
@@ -291,9 +484,7 @@ var _datosPendientes = null;
 // con el valor (objeto) de cada una de ellas
 function obtenerHistorial() {
   // KEYS * trae todas las claves de golpe; filtramos las que empiezan por "0"
-  return fetch(UPSTASH_URL + '/keys/*', {
-    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-  })
+  return dbFetch('/keys/*')
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
@@ -304,10 +495,7 @@ function obtenerHistorial() {
     });
     if (claves.length === 0) return [];
 
-    // MGET para traer todos los valores de golpe
-    return fetch(UPSTASH_URL + '/mget/' + claves.join('/'), {
-      headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-    })
+    return dbFetch('/mget/' + claves.join('/'))
     .then(function(r) { return r.json(); })
     .then(function(mdata) {
       return (mdata.result || []).map(function(val) {
@@ -377,10 +565,9 @@ function confirmarPago() {
 
   var valor = { p: pagadorId, c: consumiciones };
 
-  fetch(UPSTASH_URL + '/set/' + clave, {
+  dbFetch('/set/' + clave, {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + UPSTASH_TOKEN,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(valor)
@@ -676,9 +863,7 @@ async function verHistorico() {
 
 // Como obtenerHistorial pero devuelve [{key, data}]
 function obtenerHistorialConClaves() {
-  return fetch(UPSTASH_URL + '/keys/*', {
-    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-  })
+  return dbFetch('/keys/*')
   .then(function(r) { return r.json(); })
   .then(function(data) {
     var claves = (data.result || []).filter(function(k) {
@@ -686,9 +871,7 @@ function obtenerHistorialConClaves() {
     });
     if (claves.length === 0) return [];
 
-    return fetch(UPSTASH_URL + '/mget/' + claves.join('/'), {
-      headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
-    })
+    return dbFetch('/mget/' + claves.join('/'))
     .then(function(r) { return r.json(); })
     .then(function(mdata) {
       return (mdata.result || []).map(function(val, i) {
@@ -813,9 +996,8 @@ function borrarComanda() {
 
   var clave = _comandaActivaKey;
 
-  fetch(UPSTASH_URL + '/del/' + clave, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + UPSTASH_TOKEN }
+  dbFetch('/del/' + clave, {
+    method: 'POST'
   })
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -996,10 +1178,9 @@ function guardarProductos() {
     return;
   }
 
-  fetch(UPSTASH_URL + '/set/productos', {
+  dbFetch('/set/productos', {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + UPSTASH_TOKEN,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(nuevos)  // igual que terraza y comandas: objeto directo
@@ -1113,10 +1294,9 @@ function guardarClientes() {
     return;
   }
 
-  fetch(UPSTASH_URL + '/set/clientes', {
+  dbFetch('/set/clientes', {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + UPSTASH_TOKEN,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(nuevos)
@@ -1147,10 +1327,9 @@ function verTerraza() {
 function guardarTerraza() {
   var nuevo = parseFloat(document.getElementById('terraza-admin-input').value) || 0;
 
-  fetch(UPSTASH_URL + '/set/terraza', {
+  dbFetch('/set/terraza', {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + UPSTASH_TOKEN,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(nuevo)

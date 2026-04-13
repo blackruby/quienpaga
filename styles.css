@@ -8,7 +8,7 @@
   --text:         #e8e6ff;
   --text-muted:   #8a88a8;
   --radius:       20px;
-  --btn-height:   88px;
+  --btn-height:   76px;
   --nav-h:        64px;
   --safe-bottom:  env(safe-area-inset-bottom, 0px);
 }
@@ -88,6 +88,16 @@ html, body {
   margin-top: 8px; margin-bottom: 4px;
 }
 
+.home-header {
+  padding: 20px 18px 10px;
+}
+.home-header h2 {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
 /* action buttons */
 .action-btn {
   background: var(--surface);
@@ -96,8 +106,8 @@ html, body {
   min-height: var(--btn-height);
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 0 22px;
+  gap: 14px;
+  padding: 0 18px;
   cursor: pointer;
   transition: transform .12s, background .12s, box-shadow .12s;
   -webkit-user-select: none; user-select: none;
@@ -112,18 +122,18 @@ html, body {
   background: var(--surface2);
 }
 .action-btn .btn-icon {
-  width: 48px; height: 48px;
+  width: 42px; height: 42px;
   border-radius: 14px;
   display: grid; place-items: center;
-  font-size: 24px;
+  font-size: 22px;
   flex-shrink: 0;
 }
 .action-btn .btn-text { flex: 1; }
 .action-btn .btn-title {
-  font-size: 17px; font-weight: 800; letter-spacing: -.02em; display: block;
+  font-size: 16px; font-weight: 800; letter-spacing: -.02em; display: block;
 }
 .action-btn .btn-desc {
-  font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 2px; display: block;
+  font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 2px; display: block;
 }
 .action-btn .btn-arrow {
   font-size: 20px; color: var(--text-muted);
