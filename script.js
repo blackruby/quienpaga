@@ -8,6 +8,8 @@ const DB_DEFAULT_KEY  = 'LAISLA_DB_DEFAULT';
 var DB_CONFIGS = [];
 var DB_DEFAULT_ID = null;
 var currentDb = null;
+var dbFormAdminValue = true;
+var dbShareTargetId = null;
 
 var CLIENTES  = [];
 var PRODUCTOS = [];
@@ -19,6 +21,9 @@ function loadDbConfigs() {
   } catch (e) {
     DB_CONFIGS = [];
   }
+  DB_CONFIGS.forEach(function(db) {
+    db.admin = db.admin === true;
+  });
   DB_DEFAULT_ID = localStorage.getItem(DB_DEFAULT_KEY);
   currentDb = DB_CONFIGS.find(function(db) {
     return String(db.id) === String(DB_DEFAULT_ID);
@@ -85,7 +90,7 @@ function selectDb(id) {
   });
 }
 
-function addDbConfig(name, url, token) {
+function addDbConfig(name, url, token, admin) {
   var trimmedName = name.trim();
   var trimmedUrl = url.trim();
   var trimmedToken = token.trim();
@@ -94,7 +99,7 @@ function addDbConfig(name, url, token) {
     return null;
   }
   var id = String(Date.now());
-  DB_CONFIGS.push({ id: id, name: trimmedName, url: trimmedUrl, token: trimmedToken });
+  DB_CONFIGS.push({ id: id, name: trimmedName, url: trimmedUrl, token: trimmedToken, admin: admin === true });
   saveDbConfigs();
   return id;
 }
@@ -108,7 +113,7 @@ function submitDbForm(e) {
     document.getElementById('db-form').reportValidity();
     return false;
   }
-  var id = addDbConfig(name, url, token);
+  var id = addDbConfig(name, url, token, dbFormAdminValue);
   if (id) {
     renderDbManager();
     cerrarDbFormBtn();
@@ -136,6 +141,7 @@ function promptAddDb() {
 
 function openDbFormModal() {
   document.getElementById('db-form').reset();
+  dbFormAdminValue = true;
   var overlay = document.getElementById('db-form-overlay');
   var sheet = document.getElementById('db-form-sheet');
   overlay.classList.add('open');
@@ -190,6 +196,50 @@ function cerrarDbForm(e) {
   if (e.target === document.getElementById('db-form-overlay')) cerrarDbFormBtn();
 }
 
+function promptShareDbQr(id) {
+  dbShareTargetId = id;
+  var overlay = document.getElementById('db-share-overlay');
+  var checkbox = document.getElementById('db-share-admin-checkbox');
+  var qrArea = document.getElementById('db-share-qr-area');
+  var db = DB_CONFIGS.find(function(d) { return String(d.id) === String(id); });
+  if (!db) return;
+
+  checkbox.checked = false;
+  qrArea.style.display = 'none';
+  document.getElementById('db-share-message').textContent = 'Se va a generar un QR para compartir';
+  document.getElementById('db-share-json').textContent = '';
+  overlay.classList.add('open');
+  pushModalState('db-share');
+}
+
+function cerrarDbShareFormBtn() {
+  document.getElementById('db-share-overlay').classList.remove('open');
+}
+
+function cerrarDbShareForm(e) {
+  if (e.target === document.getElementById('db-share-overlay')) cerrarDbShareFormBtn();
+}
+
+function generateDbQr() {
+  if (!dbShareTargetId) return;
+  var db = DB_CONFIGS.find(function(d) { return String(d.id) === String(dbShareTargetId); });
+  if (!db) return;
+
+  var adminValue = document.getElementById('db-share-admin-checkbox').checked;
+  var payload = {
+    nombre: db.name,
+    url: db.url,
+    token: db.token,
+    admin: adminValue
+  };
+  var qrText = JSON.stringify(payload);
+  var qrImage = document.getElementById('db-qr-image');
+  var qrArea = document.getElementById('db-share-qr-area');
+  qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&format=png&data=' + encodeURIComponent(qrText);
+  document.getElementById('db-share-json').textContent = qrText;
+  qrArea.style.display = 'block';
+}
+
 function renderDbManager() {
   var list = document.getElementById('db-list');
   if (!list) return;
@@ -201,9 +251,12 @@ function renderDbManager() {
   DB_CONFIGS.forEach(function(db) {
     var row = document.createElement('div');
     row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1.5px solid rgba(255,255,255,.08);border-radius:16px;background:var(--surface2);gap:12px;';
+    var nameHtml = db.admin
+      ? '<button class="db-name-link" onclick="promptShareDbQr(\'' + db.id + '\')">' + db.name + '</button>'
+      : '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + db.name + '</div>';
     row.innerHTML =
       '<div style="min-width:0;flex:1;">' +
-        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + db.name + '</div>' +
+        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nameHtml + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-shrink:0;">' +
         '<button class="fab-btn fab-cancel" style="padding:10px 12px;min-width:auto;font-size:12px;" onclick="selectDb(\'' + db.id + '\')">' +
@@ -1915,6 +1968,7 @@ function handleQrResult(qrData) {
       document.getElementById('db-name-input').value = data.nombre;
       document.getElementById('db-url-input').value = data.url;
       document.getElementById('db-token-input').value = data.token;
+      dbFormAdminValue = data.admin === true;
       closeQrScanner();
       alert('Configuración cargada del QR. Revisa los datos y pulsa "Guardar BD".');
     } else {

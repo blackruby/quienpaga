@@ -409,6 +409,26 @@ html, body {
 }
 .fab-btn .material-icons-round { font-size: 20px; }
 
+.db-name-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-name-link:hover {
+  color: var(--accent-light);
+}
+
 /* ─── Modal ──────────────────────────────── */
 .modal-overlay {
   position: fixed;
