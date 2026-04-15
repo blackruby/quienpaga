@@ -65,7 +65,7 @@
 
     <div class="section-label" style="margin-top:4px">Configuración</div>
 
-    <button class="action-btn btn-prods" onclick="verProductos()">
+    <button id="btn-productos" class="action-btn btn-prods" onclick="verProductos()">
       <div class="btn-icon"><span class="material-icons-round">restaurant_menu</span></div>
       <div class="btn-text">
         <span class="btn-title">Productos</span>
@@ -74,7 +74,7 @@
       <span class="material-icons-round btn-arrow">chevron_right</span>
     </button>
 
-    <button class="action-btn btn-clis" onclick="verClientes()">
+    <button id="btn-clientes" class="action-btn btn-clis" onclick="verClientes()">
       <div class="btn-icon"><span class="material-icons-round">group</span></div>
       <div class="btn-text">
         <span class="btn-title">Clientes</span>
@@ -298,7 +298,7 @@
         <button class="pago-btn pago-btn-cancel" style="flex:1" onclick="cerrarHistModalBtn()">
           <span class="material-icons-round">close</span>Cerrar
         </button>
-        <button class="pago-btn" style="flex:0 0 auto;background:rgba(240,112,112,.15);color:#f07070;border:1.5px solid rgba(240,112,112,.3)" onclick="borrarComanda()">
+        <button id="btn-borrar-comanda" class="pago-btn" style="flex:0 0 auto;background:rgba(240,112,112,.15);color:#f07070;border:1.5px solid rgba(240,112,112,.3)" onclick="borrarComanda()">
           <span class="material-icons-round">delete</span>
         </button>
       </div>

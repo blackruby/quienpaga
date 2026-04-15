@@ -28,6 +28,7 @@ function loadDbConfigs() {
   currentDb = DB_CONFIGS.find(function(db) {
     return String(db.id) === String(DB_DEFAULT_ID);
   }) || null;
+  updateAdminVisibility();
 }
 
 function saveDbConfigs() {
@@ -43,6 +44,16 @@ function getSelectedDb() {
   return currentDb || DB_CONFIGS.find(function(db) {
     return String(db.id) === String(DB_DEFAULT_ID);
   }) || null;
+}
+
+function updateAdminVisibility() {
+  var isAdmin = currentDb && currentDb.admin === true;
+  var btnProds = document.getElementById('btn-productos');
+  var btnClis = document.getElementById('btn-clientes');
+  var btnBorrarComanda = document.getElementById('btn-borrar-comanda');
+  if (btnProds) btnProds.style.display = isAdmin ? '' : 'none';
+  if (btnClis) btnClis.style.display = isAdmin ? '' : 'none';
+  if (btnBorrarComanda) btnBorrarComanda.style.display = isAdmin ? '' : 'none';
 }
 
 function dbFetch(path, options) {
@@ -78,6 +89,7 @@ function selectDb(id) {
     currentDb = db;
     saveDbConfigs();
     renderDbManager();
+    updateAdminVisibility();
     showScreen('screen-home', 'nav-home', true);
     cargarDatos();
   })
