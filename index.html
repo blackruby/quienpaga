@@ -223,15 +223,15 @@
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;padding:0 20px 20px;">
         <div id="db-share-message" style="font-size:14px;color:var(--text);">Se va a generar un QR para compartir</div>
-        <label style="display:flex;align-items:center;gap:10px;font-size:14px;">
+        <div id="db-share-admin-row" style="display:flex;align-items:center;gap:10px;font-size:14px;">
           <input type="checkbox" id="db-share-admin-checkbox" />
-          Administrador
-        </label>
+          <span>Administrador</span>
+        </div>
         <div id="db-share-qr-area" style="display:none;text-align:center;">
           <img id="db-qr-image" alt="QR para compartir" style="max-width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.08);" />
           <div id="db-share-json" style="margin-top:12px;color:var(--text-muted);font-size:12px;word-break:break-word;"></div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div id="db-share-action-row" style="display:flex;gap:8px;">
           <button type="button" class="modal-done-btn" onclick="generateDbQr()" style="flex:1;">
             <span class="material-icons-round">qr_code</span>
             Generar QR
@@ -572,7 +572,7 @@
 
 </div>
 
-<script src="script.js?v=20260415d"></script>
+<script src="script.js?v=20260415e"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </body>
 </html>

@@ -201,12 +201,17 @@ function promptShareDbQr(id) {
   var overlay = document.getElementById('db-share-overlay');
   var checkbox = document.getElementById('db-share-admin-checkbox');
   var qrArea = document.getElementById('db-share-qr-area');
+  var message = document.getElementById('db-share-message');
+  var adminRow = document.getElementById('db-share-admin-row');
+  var actionRow = document.getElementById('db-share-action-row');
   var db = DB_CONFIGS.find(function(d) { return String(d.id) === String(id); });
   if (!db) return;
 
   checkbox.checked = false;
   qrArea.style.display = 'none';
-  document.getElementById('db-share-message').textContent = 'Se va a generar un QR para compartir';
+  message.style.display = 'block';
+  adminRow.style.display = 'flex';
+  actionRow.style.display = 'flex';
   document.getElementById('db-share-json').textContent = '';
   overlay.classList.add('open');
   pushModalState('db-share');
@@ -235,9 +240,16 @@ function generateDbQr() {
   var qrText = JSON.stringify(payload);
   var qrImage = document.getElementById('db-qr-image');
   var qrArea = document.getElementById('db-share-qr-area');
+  var message = document.getElementById('db-share-message');
+  var adminRow = document.getElementById('db-share-admin-row');
+  var actionRow = document.getElementById('db-share-action-row');
+
   qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&format=png&data=' + encodeURIComponent(qrText);
   document.getElementById('db-share-json').textContent = qrText;
   qrArea.style.display = 'block';
+  message.style.display = 'none';
+  adminRow.style.display = 'none';
+  actionRow.style.display = 'none';
 }
 
 function renderDbManager() {
