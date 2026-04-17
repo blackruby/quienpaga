@@ -310,6 +310,7 @@ var clienteActivoId = null;
 var modalCounts     = {};
 var datosListos     = false;
 var terrazaActiva   = false;   // estado del toggle de terraza
+var _histDiaItems   = null;     // items del día cuando se abre comanda desde lista de horas
 
 // ═══════════════════════════════════════════
 //  CARGA INICIAL DESDE UPSTASH (una sola vez)
@@ -669,7 +670,7 @@ async function guardarConsumicion(datos) {
 
   var ahora = new Date();
   var pad = function(n) { return String(n).padStart(2, '0'); };
-  var localIso = ahora.getFullYear() + '-' + pad(ahora.getMonth() + 1) + '-' + pad(ahora.getDate()) + 'T' + pad(ahora.getHours()) + ':' + pad(ahora.getMinutes()) + ':' + pad(ahora.getSeconds());
+  var localIso = ahora.getFullYear() + '-' + pad(ahora.getMonth() + 1) + '-' + pad(ahora.getDate()) + 'T' + pad(ahora.getHours()) + ':' + pad(ahora.getMinutes());
   document.getElementById('pago-datetime-input').value = localIso;
   var historial = [];
   try {
@@ -1094,17 +1095,17 @@ function abrirHistDia(items) {
   items.forEach(function(item) {
     var hh = item.key.substring(6,8);
     var mi = item.key.substring(8,10);
-    var ss = item.key.substring(10,12);
     var total = (item.data.c || []).reduce(function(s, par) {
       return s + (par[0] !== 0 ? par[1] : 0);
     }, 0);
     var btn = document.createElement('button');
     btn.className = 'hist-hora-btn';
     btn.innerHTML =
-      '<span class="hora">' + hh + ':' + mi + ':' + ss + '</span>' +
+      '<span class="hora">' + hh + ':' + mi + '</span>' +
       '<span class="total">' + total.toFixed(2).replace('.', ',') + ' €</span>';
     btn.addEventListener('click', function() {
       cerrarHistListBtn();
+      _histDiaItems = items;
       mostrarComanda(item);
     });
     body.appendChild(btn);
@@ -1129,12 +1130,11 @@ function mostrarComanda(item) {
   var dd = parseInt(key.substring(4,6),10);
   var hh = key.substring(6,8);
   var mi = key.substring(8,10);
-  var ss = key.substring(10,12);
   var MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
   document.getElementById('hist-modal-title').textContent =
     dd + ' ' + MESES_ES[mm] + ' ' + yy;
-  document.getElementById('hist-modal-sub').textContent = 'Comanda a las ' + hh + ':' + mi + ':' + ss;
+  document.getElementById('hist-modal-sub').textContent = 'Comanda a las ' + hh + ':' + mi;
 
   var body = document.getElementById('hist-modal-body');
   body.innerHTML = '';
@@ -1177,6 +1177,11 @@ function mostrarComanda(item) {
 function cerrarHistModalBtn() {
   document.getElementById('hist-modal-overlay').classList.remove('open');
   _comandaActivaKey = null;
+  if (_histDiaItems) {
+    var items = _histDiaItems;
+    _histDiaItems = null;
+    abrirHistDia(items);
+  }
 }
 
 function borrarComanda() {
