@@ -666,6 +666,11 @@ async function guardarConsumicion(datos) {
   sel.innerHTML = '<option disabled>Cargando…</option>';
   document.getElementById('pago-overlay').classList.add('open');
   pushModalState('pago');
+
+  var ahora = new Date();
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  var localIso = ahora.getFullYear() + '-' + pad(ahora.getMonth() + 1) + '-' + pad(ahora.getDate()) + 'T' + pad(ahora.getHours()) + ':' + pad(ahora.getMinutes()) + ':' + pad(ahora.getSeconds());
+  document.getElementById('pago-datetime-input').value = localIso;
   var historial = [];
   try {
     historial = await obtenerHistorial();
@@ -696,7 +701,7 @@ function confirmarPago() {
 
   var pagadorId = parseInt(document.getElementById('pago-select').value, 10);
 
-  var ahora = new Date();
+  var ahora = obtenerFechaHoraPago();
   function pad(n) { return String(n).padStart(2, '0'); }
   var clave =
     String(ahora.getFullYear()).slice(-2) +
@@ -732,6 +737,15 @@ function confirmarPago() {
     console.error('Error guardando en Upstash:', err);
     alert('Error al guardar: ' + err.message);
   });
+}
+
+function obtenerFechaHoraPago() {
+  var input = document.getElementById('pago-datetime-input');
+  if (input.value) {
+    var d = new Date(input.value);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
 }
 
 function confirmarConsumicion() {
@@ -1115,11 +1129,12 @@ function mostrarComanda(item) {
   var dd = parseInt(key.substring(4,6),10);
   var hh = key.substring(6,8);
   var mi = key.substring(8,10);
+  var ss = key.substring(10,12);
   var MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
   document.getElementById('hist-modal-title').textContent =
     dd + ' ' + MESES_ES[mm] + ' ' + yy;
-  document.getElementById('hist-modal-sub').textContent = 'Comanda a las ' + hh + ':' + mi;
+  document.getElementById('hist-modal-sub').textContent = 'Comanda a las ' + hh + ':' + mi + ':' + ss;
 
   var body = document.getElementById('hist-modal-body');
   body.innerHTML = '';
