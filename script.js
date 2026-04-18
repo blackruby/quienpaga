@@ -1709,8 +1709,7 @@ function abrirDesglose(clienteId, nombre) {
     }
     if (invit > 0) invit /= (h.c.length - 1);
     if (h.p == clienteId) {
-      for (var c of h.c) { if (c[0] != 0) pagado += c[1]; }
-      pagado += invit;
+      for (var c of h.c) { pagado += c[1]; }
     }
 
     var consInvt = consumido + invit;
