@@ -2036,12 +2036,27 @@ function handleQrResult(qrData) {
   try {
     var data = JSON.parse(qrData);
     if (data.nombre && data.url && data.token) {
-      document.getElementById('db-name-input').value = data.nombre;
-      document.getElementById('db-url-input').value = data.url;
-      document.getElementById('db-token-input').value = data.token;
-      dbFormAdminValue = data.admin === true;
+      var name = data.nombre.trim();
+      var url = data.url.trim();
+      var token = data.token.trim();
+      var admin = data.admin === true;
+
       closeQrScanner();
-      alert('Configuración cargada del QR. Revisa los datos y pulsa "Guardar".');
+
+      var checkUrl = url.replace(/\/+$/, '') + '/get/productos';
+      fetch(checkUrl, { headers: { Authorization: 'Bearer ' + token } })
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var id = addDbConfig(name, url, token, admin);
+          if (id) {
+            renderDbManager();
+            selectDb(id);
+            cerrarDbFormBtn();
+          }
+        })
+        .catch(function(err) {
+          alert('Error de conexión con la BD: ' + err.message);
+        });
     } else {
       alert('El código QR no contiene una configuración válida de BD. Debe incluir nombre, url y token.');
     }
