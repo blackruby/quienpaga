@@ -1457,20 +1457,111 @@ function addClienteRow(c, borrable) {
       '</button>'
     : '';
 
+  tr.draggable = c.id !== 0;
   tr.innerHTML =
-    '<td style="color:var(--text-muted);font-weight:700;font-size:13px;padding:8px 14px">' + c.id + '</td>' +
+    '<td class="prod-drag-handle" style="padding:6px 8px 6px 0">' +
+      (c.id !== 0 ? '<span class="material-icons-round">drag_indicator</span>' : '') +
+    '</td>' +
     '<td style="padding:6px 8px 6px 0">' +
       '<input class="prod-edit-input" type="text" value="' + (c.nombre || '') + '" placeholder="Nombre del cliente" />' +
     '</td>' +
-    '<td style="width:36px;padding:6px 8px 6px 0">' + btnBorrar + '</td>';
+    '<td style="width:36px;padding:6px 8px 6px:0">' + btnBorrar + '</td>';
 
   // Insertar antes de la última fila (que es siempre el cliente id=0)
   var filas = tbody.querySelectorAll('tr');
-  var ultima = filas.length > 0 ? filas[filas.length - 1] : null;
-  if (ultima && parseInt(ultima.dataset.id, 10) === 0) {
+  var ultima = null;
+  for (var i = 0; i < filas.length; i++) {
+    if (parseInt(filas[i].dataset.id, 10) === 0) {
+      ultima = filas[i];
+      break;
+    }
+  }
+  if (ultima) {
     tbody.insertBefore(tr, ultima);
   } else {
     tbody.appendChild(tr);
+  }
+
+  // Drag & Drop (ratón)
+  if (c.id !== 0) {
+    tr.addEventListener('dragstart', function(e) {
+      _dragSrc = tr;
+      tr.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    tr.addEventListener('dragend', function() {
+      _dragSrc = null;
+      tr.classList.remove('dragging');
+      document.querySelectorAll('#clientes-admin-tbody tr').forEach(function(r) {
+        r.classList.remove('drag-over');
+      });
+    });
+    tr.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (_dragSrc && _dragSrc !== tr) {
+        document.querySelectorAll('#clientes-admin-tbody tr').forEach(function(r) {
+          r.classList.remove('drag-over');
+        });
+        tr.classList.add('drag-over');
+      }
+    });
+    tr.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (_dragSrc && _dragSrc !== tr) {
+        var tbody = tr.parentNode;
+        var rows  = Array.from(tbody.querySelectorAll('tr'));
+        var srcIdx = rows.indexOf(_dragSrc);
+        var tgtIdx = rows.indexOf(tr);
+        if (srcIdx < tgtIdx) tbody.insertBefore(_dragSrc, tr.nextSibling);
+        else                 tbody.insertBefore(_dragSrc, tr);
+        tr.classList.remove('drag-over');
+      }
+    });
+
+    // Touch drag (móvil)
+    var handle = tr.querySelector('.prod-drag-handle');
+    var touchY = 0;
+    handle.addEventListener('touchstart', function(e) {
+      _dragSrc = tr;
+      tr.classList.add('dragging');
+      touchY = e.touches[0].clientY;
+      e.preventDefault();
+    }, { passive: false });
+
+    handle.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      var y = e.touches[0].clientY;
+      var tbody = tr.parentNode;
+      var rows  = Array.from(tbody.querySelectorAll('tr:not(.dragging)'));
+      document.querySelectorAll('#clientes-admin-tbody tr').forEach(function(r) {
+        r.classList.remove('drag-over');
+      });
+      var target = null;
+      rows.forEach(function(r) {
+        var rect = r.getBoundingClientRect();
+        if (y > rect.top && y < rect.bottom) target = r;
+      });
+      if (target) target.classList.add('drag-over');
+      touchY = y;
+    }, { passive: false });
+
+    handle.addEventListener('touchend', function() {
+      var tbody = tr.parentNode;
+      var over  = tbody.querySelector('tr.drag-over');
+      if (over && over !== tr) {
+        var rows  = Array.from(tbody.querySelectorAll('tr'));
+        var srcIdx = rows.indexOf(_dragSrc);
+        var tgtIdx = rows.indexOf(over);
+        if (srcIdx < tgtIdx) tbody.insertBefore(_dragSrc, over.nextSibling);
+        else                 tbody.insertBefore(_dragSrc, over);
+      }
+      tr.classList.remove('dragging');
+      document.querySelectorAll('#clientes-admin-tbody tr').forEach(function(r) {
+        r.classList.remove('drag-over');
+      });
+      _dragSrc = null;
+    });
   }
 
   // Si es nuevo, poner foco en el input
@@ -1486,16 +1577,30 @@ function eliminarClienteRow(btn) {
 function guardarClientes() {
   var filas = document.querySelectorAll('#clientes-admin-tbody tr');
   var nuevos = [];
+  var nombresVistos = {};
 
   filas.forEach(function(tr) {
     var id     = parseInt(tr.dataset.id, 10);
     var nombre = tr.querySelector('input').value.trim();
-    if (!nombre) return; // ignorar filas vacías
+    if (!nombre) return;
+    var lower = nombre.toLowerCase();
+    if (nombresVistos[lower]) {
+      alert('El nombre "' + nombre + '" está repetido.');
+      return;
+    }
+    nombresVistos[lower] = true;
     nuevos.push({ id: id, nombre: nombre });
   });
 
   if (nuevos.length === 0) {
     alert('No hay clientes para guardar.');
+    return;
+  }
+
+  var tieneInvitados = false;
+  nuevos.forEach(function(c) { if (c.id === 0) tieneInvitados = true; });
+  if (!tieneInvitados) {
+    alert('El cliente "Invitados" (id=0) es obligatorio.');
     return;
   }
 
