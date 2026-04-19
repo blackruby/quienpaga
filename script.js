@@ -4,12 +4,21 @@
 
 const DB_CONFIGS_KEY  = 'LAISLA_DB_CONFIGS';
 const DB_DEFAULT_KEY  = 'LAISLA_DB_DEFAULT';
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MESES_ES_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const DIAS_SEMANA = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
 
 var DB_CONFIGS = [];
 var DB_DEFAULT_ID = null;
 var currentDb = null;
 var dbFormAdminValue = true;
 var dbShareTargetId = null;
+
+function sumImportes(importesObj) {
+  var total = 0;
+  Object.keys(importesObj).forEach(function(k) { total += importesObj[k]; });
+  return total;
+}
 
 var CLIENTES  = [];
 var PRODUCTOS = [];
@@ -159,10 +168,6 @@ function deleteDbConfig(id) {
 
 var visualViewportResizeHandler = null;
 
-function promptAddDb() {
-  openDbFormModal();
-}
-
 function openDbFormModal() {
   document.getElementById('db-form').reset();
   dbFormAdminValue = true;
@@ -216,10 +221,6 @@ function applyKeyboardAwareModal(overlay, sheet) {
   }
 }
 
-function cerrarDbForm(e) {
-  if (e.target === document.getElementById('db-form-overlay')) cerrarDbFormBtn();
-}
-
 function promptShareDbQr(id) {
   dbShareTargetId = id;
   var overlay = document.getElementById('db-share-overlay');
@@ -243,10 +244,6 @@ function promptShareDbQr(id) {
 
 function cerrarDbShareFormBtn() {
   document.getElementById('db-share-overlay').classList.remove('open');
-}
-
-function cerrarDbShareForm(e) {
-  if (e.target === document.getElementById('db-share-overlay')) cerrarDbShareFormBtn();
 }
 
 function generateDbQr() {
@@ -411,8 +408,8 @@ cargarDatos();
 var _screenActual = 'home';
 
 function showScreen(screenId, navId, sinHistorial) {
-  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
-  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var activeEls = document.querySelectorAll('.screen, .nav-item');
+  activeEls.forEach(function(el) { el.classList.remove('active'); });
   document.getElementById(screenId).classList.add('active');
   document.getElementById(navId).classList.add('active');
   _screenActual = screenId;
@@ -578,8 +575,7 @@ function onImporteChange(clienteId, valor) {
 }
 
 function actualizarTotal() {
-  var total = 0;
-  Object.keys(importes).forEach(function(k) { total += importes[k]; });
+  var total = sumImportes(importes);
   document.getElementById('total-value').textContent =
     total.toFixed(2).replace('.', ',') + ' €';
 }
@@ -777,8 +773,7 @@ function confirmarConsumicion() {
     precioTerrazaActual = parseFloat(inputPrecio.value) || 0;
   }
 
-  var total = 0;
-  Object.keys(importes).forEach(function(k) { total += importes[k]; });
+  var total = sumImportes(importes);
   var datos = {
     fecha: new Date().toISOString(),
     clientes: CLIENTES.map(function(c) {
@@ -912,10 +907,6 @@ function cerrarModalBtn() {
   modalCounts = {};
 }
 
-function cerrarModal(e) {
-  if (e.target === document.getElementById('modal-overlay')) cerrarModalBtn();
-}
-
 // Seleccionar todo el contenido al coger foco en inputs numéricos
 document.addEventListener('focusin', function(e) {
   if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
@@ -995,10 +986,6 @@ async function verHistorico() {
     m--; if (m < 0) { m = 11; y--; }
   }
 
-  var MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var DOW = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
-
   meses.forEach(function(ym) {
     var yy2  = String(ym.y).slice(-2);
     var mm2  = String(ym.m + 1).padStart(2, '0');
@@ -1014,7 +1001,7 @@ async function verHistorico() {
     grid.className = 'cal-grid';
 
     // Cabecera días de la semana
-    DOW.forEach(function(d) {
+    DIAS_SEMANA.forEach(function(d) {
       var dh = document.createElement('div');
       dh.className   = 'cal-dow';
       dh.textContent = d;
@@ -1095,13 +1082,12 @@ function abrirHistDia(items) {
     return;
   }
   // Varios: mostrar lista de horas
-  var MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   var titulo = document.getElementById('hist-list-title');
   var key0   = items[0].key;
   var yy = 2000 + parseInt(key0.substring(0,2),10);
   var mm = parseInt(key0.substring(2,4),10) - 1;
   var dd = parseInt(key0.substring(4,6),10);
-  titulo.textContent = dd + ' ' + MESES_ES[mm] + ' ' + yy;
+  titulo.textContent = dd + ' ' + MESES_ES_SHORT[mm] + ' ' + yy;
 
   var body = document.getElementById('hist-list-body');
   body.innerHTML = '';
@@ -1144,10 +1130,9 @@ function mostrarComanda(item) {
   var dd = parseInt(key.substring(4,6),10);
   var hh = key.substring(6,8);
   var mi = key.substring(8,10);
-  var MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
   document.getElementById('hist-modal-title').textContent =
-    dd + ' ' + MESES_ES[mm] + ' ' + yy;
+    dd + ' ' + MESES_ES_SHORT[mm] + ' ' + yy;
   document.getElementById('hist-modal-sub').textContent = 'Comanda a las ' + hh + ':' + mi;
 
   var body = document.getElementById('hist-modal-body');
@@ -1222,14 +1207,8 @@ function borrarComanda() {
     alert('Error al borrar: ' + err.message);
   });
 }
-function cerrarHistModal(e) {
-  if (e.target === document.getElementById('hist-modal-overlay')) cerrarHistModalBtn();
-}
 function cerrarHistListBtn() {
   document.getElementById('hist-list-overlay').classList.remove('open');
-}
-function cerrarHistList(e) {
-  if (e.target === document.getElementById('hist-list-overlay')) cerrarHistListBtn();
 }
 
 // ─── Productos ───────────────────────────────
@@ -1627,10 +1606,6 @@ function guardarClientes() {
   });
 }
 
-// ─── Terraza ─────────────────────────────────
-// Funciones verTerraza() y guardarTerraza() eliminadas
-// El precio de terraza ahora se gestiona en Nueva consumición
-
 function rellenaEstadistica(tabla, historial) {
   var balance = {};
   for (var c1 in tabla) {
@@ -1872,9 +1847,6 @@ function abrirDesglose(clienteId, nombre) {
 function cerrarDesgloseBtn() {
   document.getElementById('desglose-overlay').classList.remove('open');
 }
-function cerrarDesglose(e) {
-  if (e.target === document.getElementById('desglose-overlay')) cerrarDesgloseBtn();
-}
 
 // ═══════════════════════════════════════════
 //  CRUCES DE PAGOS
@@ -2016,10 +1988,6 @@ function abrirCrucesModal(cliente1, cliente2) {
 
 function cerrarCrucesModalBtn() {
   document.getElementById('cruces-overlay').classList.remove('open');
-}
-
-function cerrarCrucesModal(e) {
-  if (e.target === document.getElementById('cruces-overlay')) cerrarCrucesModalBtn();
 }
 
 // ═══════════════════════════════════════════

@@ -23,7 +23,7 @@
   <title>QuiénPaga</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260419a" />
+  <link rel="stylesheet" href="styles.css?v=20260419b" />
 </head>
 <body>
 <div id="app">
@@ -154,7 +154,7 @@
   </div>
 
   <!-- ── MODAL: PRODUCTOS ── -->
-  <div id="modal-overlay" class="modal-overlay" onclick="cerrarModal(event)">
+  <div id="modal-overlay" class="modal-overlay">
     <div class="modal-sheet" id="modal-sheet">
       <div class="modal-handle"></div>
       <div class="modal-header">
@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <div id="db-form-overlay" class="modal-overlay" onclick="cerrarDbForm(event)">
+  <div id="db-form-overlay" class="modal-overlay">
     <div class="modal-sheet" id="db-form-sheet">
       <div class="modal-handle"></div>
       <div class="modal-header">
@@ -208,7 +208,7 @@
     </div>
   </div>
 
-  <div id="db-share-overlay" class="modal-overlay" onclick="cerrarDbShareForm(event)">
+  <div id="db-share-overlay" class="modal-overlay">
     <div class="modal-sheet" id="db-share-sheet">
       <div class="modal-handle"></div>
       <div class="modal-header">
@@ -286,7 +286,7 @@
   </div>
 
   <!-- ── MODAL: DETALLE COMANDA ── -->
-  <div id="hist-modal-overlay" class="pago-overlay" onclick="cerrarHistModal(event)">
+  <div id="hist-modal-overlay" class="pago-overlay">
     <div class="pago-dialog" style="gap:16px" onclick="event.stopPropagation()">
       <div class="pago-dialog-header">
         <div class="pago-dialog-icon">🧾</div>
@@ -306,7 +306,7 @@
   </div>
 
   <!-- ── MODAL: LISTA DE COMANDAS DEL DÍA ── -->
-  <div id="hist-list-overlay" class="pago-overlay" onclick="cerrarHistList(event)">
+  <div id="hist-list-overlay" class="pago-overlay">
     <div class="pago-dialog" style="gap:12px" onclick="event.stopPropagation()">
       <div class="pago-dialog-header">
         <div class="pago-dialog-icon">📋</div>
@@ -320,7 +320,7 @@
   </div>
 
   <!-- ── MODAL: DESGLOSE CLIENTE ── -->
-  <div id="desglose-overlay" class="modal-overlay" onclick="cerrarDesglose(event)">
+  <div id="desglose-overlay" class="modal-overlay">
     <div class="modal-sheet" id="desglose-sheet" onclick="event.stopPropagation()">
       <div class="modal-handle"></div>
       <div class="modal-header">
@@ -359,7 +359,7 @@
   </div>
 
   <!-- ── MODAL: CRUCES DE PAGOS ── -->
-  <div id="cruces-overlay" class="modal-overlay" onclick="cerrarCrucesModal(event)">
+  <div id="cruces-overlay" class="modal-overlay">
     <div class="modal-sheet" id="cruces-sheet" onclick="event.stopPropagation()">
       <div class="modal-handle"></div>
       <div class="modal-header">
@@ -515,7 +515,7 @@
       <div class="terraza-admin-card" style="padding:22px 20px;gap:16px;">
         <div class="terraza-admin-label">Bases de datos configuradas</div>
         <div id="db-list" style="display:flex;flex-direction:column;gap:10px;max-height:48vh;overflow:auto;padding-right:4px;"></div>
-        <button class="terraza-save-btn" onclick="promptAddDb()" style="margin-top:4px;">
+        <button class="terraza-save-btn" onclick="openDbFormModal()" style="margin-top:4px;">
           <span class="material-icons-round">add</span>
           Nuevo Origen
         </button>
@@ -550,7 +550,7 @@
 
 </div>
 
-<script src="script.js?v=20260419a"></script>
+<script src="script.js?v=20260419b"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </body>
 </html>
