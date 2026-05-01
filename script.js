@@ -316,7 +316,7 @@ function showDbManager() {
 var importes        = {};
 var clienteActivoId = null;
 var modalCounts     = {};
-var datosListos     = false;
+var datosListos     = true; // ya no se usa
 var terrazaActiva   = false;   // estado del toggle de terraza
 var _histDiaItems   = null;     // items del día cuando se abre comanda desde lista de horas
 
@@ -358,49 +358,61 @@ async function cargarDatos() {
     return;
   }
 
-  mostrarEstadoCarga('Cargando datos…', false);
-
+  // Verificar conexión con la BD
+  mostrarEstadoCarga('Verificando conexión…', false);
   try {
-    var resultados = await Promise.all([
-      redisGet('clientes').catch(function() { return []; }),
-      redisGet('productos').catch(function() { return []; }),
-      dbFetch('/get/terraza')
-        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function(d) { return parseFloat(d.result) || 0; })
-        .catch(function() { return 0; })
-    ]);
+    await dbFetch('/get/clientes');
+    datosListos = true;
+  } catch(err) {
+    console.error('Error de conexión:', err);
+    mostrarEstadoCarga('Error de conexión: ' + err.message, true);
+    showDbManager();
+  }
+}
 
-    CLIENTES        = resultados[0];
-    PRODUCTOS       = resultados[1];
-    PRECIO_TERRAZA  = resultados[2];
+cargarDatos();
 
-    // Initialize clients with "Invitados" if empty
+// Funciones de carga reutilizables
+async function cargarClientes() {
+  try {
+    CLIENTES = await redisGet('clientes').catch(function() { return []; });
     if (!Array.isArray(CLIENTES) || CLIENTES.length === 0) {
       CLIENTES = [{ id: 0, nombre: 'Invitados' }];
-      // Save initialized clients to DB
       await dbFetch('/set/clientes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(CLIENTES)
       });
     }
-
-    if (!Array.isArray(PRODUCTOS) || PRODUCTOS.length === 0)
-      throw new Error('El array de productos está vacío');
-
-    datosListos = true;
-
-    if (document.getElementById('screen-nueva').classList.contains('active')) {
-      nuevaConsumicion();
-    }
-
+    return CLIENTES;
   } catch(err) {
-    console.error('Error cargando datos desde Upstash:', err);
-    mostrarEstadoCarga('Error al cargar datos: ' + err.message, true);
+    throw new Error('Error cargando clientes: ' + err.message);
   }
 }
 
-cargarDatos();
+async function cargarProductos() {
+  try {
+    PRODUCTOS = await redisGet('productos').catch(function() { return []; });
+    if (!Array.isArray(PRODUCTOS) || PRODUCTOS.length === 0)
+      throw new Error('El array de productos está vacío');
+    return PRODUCTOS;
+  } catch(err) {
+    throw new Error('Error cargando productos: ' + err.message);
+  }
+}
+
+async function cargarTerraza() {
+  try {
+    var r = await dbFetch('/get/terraza');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    PRECIO_TERRAZA = parseFloat(d.result) || 0;
+    return PRECIO_TERRAZA;
+  } catch(err) {
+    PRECIO_TERRAZA = 0;
+    return 0;
+  }
+}
 
 // ═══════════════════════════════════════════
 //  NAVEGACIÓN
@@ -534,28 +546,25 @@ function construirTablaClientes() {
   actualizarTotal();
 }
 
-function nuevaConsumicion() {
+async function nuevaConsumicion() {
   showScreen('screen-nueva', 'nav-nueva');
 
-  if (!datosListos) {
-    mostrarEstadoCarga('Cargando datos…', false);
+  try {
+    await Promise.all([
+      cargarClientes(),
+      cargarProductos()
+    ]);
+    await cargarTerraza();
+  } catch(err) {
+    mostrarEstadoCarga('Error al cargar datos: ' + err.message, true);
     return;
   }
 
-  dbFetch('/get/terraza')
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(d) {
-      precioTerrazaActual = parseFloat(d.result) || 0;
-      precioTerrazaOriginal = precioTerrazaActual;
-    })
-    .catch(function() {
-      precioTerrazaActual = 0;
-      precioTerrazaOriginal = 0;
-    })
-    .finally(function() {
-      resetearTerrazaUI();
-      construirTablaClientes();
-    });
+  precioTerrazaActual = PRECIO_TERRAZA;
+  precioTerrazaOriginal = precioTerrazaActual;
+
+  resetearTerrazaUI();
+  construirTablaClientes();
 }
 
 function resetearTerrazaUI() {
@@ -951,6 +960,14 @@ async function verHistorico() {
   cal.style.display     = 'none';
   cal.innerHTML         = '';
 
+  // Cargar clientes
+  try {
+    await cargarClientes();
+  } catch(err) {
+    loading.innerHTML = '<span style="color:#f07070">' + err.message + '</span>';
+    return;
+  }
+
   // Traer claves + valores
   try {
     _histItems = await obtenerHistorialConClaves();
@@ -1220,11 +1237,19 @@ function cerrarHistListBtn() {
 var _nextProdId = 1000;
 var _dragSrc    = null;  // fila que se está arrastrando
 
-function verProductos() {
+async function verProductos() {
   showScreen('screen-productos', 'nav-home');
+
   var tbody = document.getElementById('productos-admin-tbody');
-  tbody.innerHTML = '';
-  PRODUCTOS.forEach(function(p) { addProductoRow(p); });
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5">Cargando…</td></tr>';
+
+  try {
+    await cargarProductos();
+    tbody.innerHTML = '';
+    PRODUCTOS.forEach(function(p) { addProductoRow(p); });
+  } catch(err) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f07070">Error: ' + err.message + '</td></tr>';
+  }
 }
 
 function addProductoRow(p) {
@@ -1393,7 +1418,14 @@ function guardarProductos() {
 async function verClientes() {
   showScreen('screen-clientes', 'nav-home');
   var tbody = document.getElementById('clientes-admin-tbody');
-  tbody.innerHTML = '';
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;opacity:.5">Cargando…</td></tr>';
+
+  try {
+    await cargarClientes();
+  } catch(err) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f07070">' + err.message + '</td></tr>';
+    return;
+  }
 
   // Cargar historial para saber qué clientes no se pueden borrar
   var historial = [];
@@ -1412,6 +1444,7 @@ async function verClientes() {
     }
   });
 
+  tbody.innerHTML = '';
   CLIENTES.forEach(function(c) {
     var borrable = c.id !== 0 && !idsEnHistorial.has(String(c.id));
     addClienteRow(c, borrable);
@@ -1650,6 +1683,14 @@ async function verEstadisticas() {
 
   document.getElementById('stats-loading').style.display  = 'flex';
   document.getElementById('stats-content').style.display  = 'none';
+
+  // Cargar clientes
+  try {
+    await cargarClientes();
+  } catch(err) {
+    document.getElementById('stats-loading').innerHTML = '<span style="color:#f07070">' + err.message + '</span>';
+    return;
+  }
 
   var historial = [];
   try {
